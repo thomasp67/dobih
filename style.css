@@ -709,38 +709,78 @@ tr.row-selected td {
 
 /* --------------------------------------------------------------------------
    12. COLUMN WIDTH ALLOCATIONS
-   Guarantees that Height values are never truncated or clipped across viewports.
+   Mobile-first: On mobile (< 640px), only Name and Height are displayed in the
+   table rows, giving summits and heights maximum breathing room without wrap.
+   Classification is displayed cleanly inside the accordion drawer.
+   On tablet & desktop (>= 640px), all 3 columns (Name, Classification, Height)
+   are displayed side-by-side.
    -------------------------------------------------------------------------- */
 .col-name {
-  width: 40%;
+  width: 64%;
   text-align: left;
 }
 
 .col-class {
-  width: 36%;
+  display: none;
   text-align: right;
 }
 
 .col-height {
-  width: 24%;
+  width: 36%;
   text-align: right;
+  white-space: nowrap;
 }
 
 @media (min-width: 640px) {
-  .col-name { width: 38%; }
-  .col-class { width: 44%; }
-  .col-height { width: 18%; }
+  .col-name {
+    width: 38%;
+  }
+  .col-class {
+    display: table-cell;
+    width: 44%;
+    text-align: right;
+  }
+  .col-height {
+    width: 18%;
+  }
 }
 
 @media (min-width: 960px) {
-  .col-name { width: 35%; }
-  .col-class { width: 50%; }
-  .col-height { width: 15%; }
+  .col-name {
+    width: 35%;
+  }
+  .col-class {
+    display: table-cell;
+    width: 50%;
+    text-align: right;
+  }
+  .col-height {
+    width: 15%;
+  }
+}
+
+/* Header subtitle & mobile drawer spacing */
+@media (max-width: 639.98px) {
+  #results-count {
+    display: block;
+    font-size: 0.72rem !important;
+    margin-top: 2px;
+  }
+  .inline-drawer-wrapper {
+    padding: 8px;
+  }
+  .drawer-top-row {
+    padding: 6px 8px;
+    gap: 8px;
+  }
+  .external-links-inline {
+    font-size: 0.7rem;
+    gap: 4px;
+  }
 }
 
 /* --------------------------------------------------------------------------
-   13. ROW CLASSIFICATION BADGES
-   Rendered in the middle column of each table row.
+   13. ROW CLASSIFICATION BADGES & ACCORDION CLASSIFICATION
    -------------------------------------------------------------------------- */
 .row-badge-container {
   display: flex;
@@ -748,6 +788,49 @@ tr.row-selected td {
   gap: 4px;
   overflow: hidden;
   justify-content: flex-end;
+}
+
+/* Badges container inside drawer */
+.drawer-badge-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+
+.detail-line .drawer-badge-container {
+  justify-content: flex-end;
+  max-width: 70%;
+}
+
+.detail-line.drawer-classification-line {
+  align-items: center;
+}
+
+/* Mobile Quick Badges Bar at top of drawer */
+.drawer-mobile-badges-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 8px 10px;
+  flex-wrap: wrap;
+}
+
+.drawer-mobile-badges-label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+@media (min-width: 640px) {
+  .drawer-mobile-badges-bar {
+    display: none;
+  }
 }
 
 .row-badge {

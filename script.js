@@ -799,6 +799,36 @@ function buildRowBadgesHtml(h) {
 }
 
 /**
+ * Constructs HTML markup for drawer (accordion) classification badges.
+ * Wraps pills cleanly and includes major classifications plus any special list memberships.
+ * 
+ * @param {Object} h - Normalized hill record.
+ * @returns {string} HTML markup string.
+ */
+function buildDrawerBadgesHtml(h) {
+  const matchedItems = getOrderedMajorTokens(h);
+  const badges = [];
+
+  matchedItems.forEach(item => {
+    const baseName = CLASSIFICATION_MAP[item.code] || item.name;
+    const displayName = item.prefix === 'ex-' ? `ex-${baseName}` : baseName;
+    const desc = getCodeDescription(item.code);
+    const titleText = item.prefix === 'ex-' ? `Former ${desc}` : desc;
+    badges.push(`<span class="row-badge" style="background-color: ${item.color}25; border-color: ${item.color}60; color: ${item.color};" title="${titleText}">${displayName}</span>`);
+  });
+
+  const nonMajor = getNonMajorMemberships(h);
+  if (nonMajor.length > 0) {
+    nonMajor.forEach(name => {
+      badges.push(`<span class="row-badge" style="background-color: rgba(56, 189, 248, 0.15); border-color: rgba(56, 189, 248, 0.4); color: #38bdf8;" title="${name}">${name}</span>`);
+    });
+  }
+
+  if (badges.length === 0) return '';
+  return `<div class="drawer-badge-container">${badges.join('')}</div>`;
+}
+
+/**
  * Returns the primary theme color for a hill (used for map pins).
  * 
  * @param {Object} h - Normalized hill record.
@@ -912,6 +942,7 @@ function formatMapSheetLinks(sheetStr) {
 function buildRowHtml(h, globalIdx, isSelected) {
   const heightDisplay = h.metres !== null ? `${h.metres.toFixed(1)}m (${h.feet !== null ? h.feet : '-'}ft)` : '-';
   const classBadgesHtml = buildRowBadgesHtml(h);
+  const drawerBadgesHtml = buildDrawerBadgesHtml(h);
 
   let rowHtml = `
     <tr class="${isSelected ? 'row-selected' : ''}" onclick="toggleSummit(${globalIdx})" id="row-${globalIdx}">
@@ -981,6 +1012,14 @@ function buildRowHtml(h, globalIdx, isSelected) {
                   </div>
                   <div class="external-links-inline">${simpleLinksHtml}</div>
                 </div>
+
+                ${drawerBadgesHtml ? `
+                <div class="drawer-mobile-badges-bar">
+                  <span class="drawer-mobile-badges-label">Classification:</span>
+                  ${drawerBadgesHtml}
+                </div>
+                ` : ''}
+
                 <div id="terrain-map-container"></div>
                 <div id="drawer-photo-container" style="display: none;">
                   <img id="drawer-hill-photo" src="" alt="Summit Photo" title="Click to open in full size" onclick="openCurrentPhotoFull()" />
@@ -1007,8 +1046,13 @@ function buildRowHtml(h, globalIdx, isSelected) {
               <!-- RIGHT SECTION (30%): Details block + Notes bullet points -->
               <div class="drawer-right-col">
                 <div class="unified-details-block">
+                  <div class="detail-line drawer-classification-line">
+                    <span>Classification</span>
+                    ${drawerBadgesHtml || '<strong style="color: var(--text-muted); font-size: 0.8rem;">-</strong>'}
+                  </div>
                   ${h.altName ? `<div class="detail-line"><span>Alternate Name</span><strong>${h.altName}</strong></div>` : ''}
                   <div class="detail-line"><span>Area</span><strong>${h.county || '-'}</strong></div>
+                  <div class="detail-line"><span>Height</span><strong>${heightDisplay}</strong></div>
                   <div class="detail-line"><span>Drop</span><strong>${h.drop !== null ? h.drop + 'm' : '-'}</strong></div>
                   <div class="detail-line"><span>Parent</span><strong>${parentDisplay}</strong></div>
                   <div class="detail-line"><span>Grid Ref</span><strong>${h.gridRef || '-'}</strong></div>
