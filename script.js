@@ -800,10 +800,10 @@ function buildRowBadgesHtml(h) {
 
 /**
  * Constructs HTML markup for drawer (accordion) classification badges.
- * Wraps pills cleanly and includes major classifications plus any special list memberships.
+ * Returns badge spans for display at the top of the accordion drawer.
  * 
  * @param {Object} h - Normalized hill record.
- * @returns {string} HTML markup string.
+ * @returns {string} HTML markup string of badge spans.
  */
 function buildDrawerBadgesHtml(h) {
   const matchedItems = getOrderedMajorTokens(h);
@@ -825,7 +825,7 @@ function buildDrawerBadgesHtml(h) {
   }
 
   if (badges.length === 0) return '';
-  return `<div class="drawer-badge-container">${badges.join('')}</div>`;
+  return badges.join('');
 }
 
 /**
@@ -991,10 +991,10 @@ function buildRowHtml(h, globalIdx, isSelected) {
 
     rowHtml += `
       <tr class="inline-drawer-row">
-        <td colspan="3">
+        <td colspan="3" class="inline-drawer-cell">
           <div class="inline-drawer-wrapper" id="inline-drawer-pane">
             <div class="drawer-body">
-              <!-- LEFT SECTION (70%): Top row (Prev, Counter, Next, Pins, External Links) + Bottom Map / Photo -->
+              <!-- LEFT SECTION (70%): Top row (Prev, Counter, Next, Pins, External Links) + Classification Row + Bottom Map / Photo -->
               <div class="drawer-left-col">
                 <div class="drawer-top-row">
                   <div style="display: flex; align-items: center; gap: 4px; flex-wrap: nowrap;">
@@ -1013,12 +1013,12 @@ function buildRowHtml(h, globalIdx, isSelected) {
                   <div class="external-links-inline">${simpleLinksHtml}</div>
                 </div>
 
-                ${drawerBadgesHtml ? `
-                <div class="drawer-mobile-badges-bar">
-                  <span class="drawer-mobile-badges-label">Classification:</span>
-                  ${drawerBadgesHtml}
+                <div class="drawer-classification-row">
+                  <span class="drawer-classification-label">Classification:</span>
+                  <div class="drawer-badge-container">
+                    ${drawerBadgesHtml || '<strong style="color: var(--text-muted); font-size: 0.8rem;">-</strong>'}
+                  </div>
                 </div>
-                ` : ''}
 
                 <div id="terrain-map-container"></div>
                 <div id="drawer-photo-container" style="display: none;">
@@ -1046,10 +1046,6 @@ function buildRowHtml(h, globalIdx, isSelected) {
               <!-- RIGHT SECTION (30%): Details block + Notes bullet points -->
               <div class="drawer-right-col">
                 <div class="unified-details-block">
-                  <div class="detail-line drawer-classification-line">
-                    <span>Classification</span>
-                    ${drawerBadgesHtml || '<strong style="color: var(--text-muted); font-size: 0.8rem;">-</strong>'}
-                  </div>
                   ${h.altName ? `<div class="detail-line"><span>Alternate Name</span><strong>${h.altName}</strong></div>` : ''}
                   <div class="detail-line"><span>Area</span><strong>${h.county || '-'}</strong></div>
                   <div class="detail-line"><span>Height</span><strong>${heightDisplay}</strong></div>
@@ -1316,7 +1312,10 @@ function initMapForSelected(hill) {
 
   setTimeout(() => {
     if (leafletMap) leafletMap.invalidateSize();
-  }, 100);
+  }, 50);
+  setTimeout(() => {
+    if (leafletMap) leafletMap.invalidateSize();
+  }, 250);
 }
 
 /* ============================================================================
@@ -2066,6 +2065,19 @@ window.addEventListener('keydown', e => {
     if (e.key === 'ArrowRight') navigateCarousel(1);
     if (e.key === 'Escape') closeDrawer();
   }
+});
+
+// Recalculate Leaflet map dimensions on window resize or mobile orientation change
+window.addEventListener('resize', () => {
+  if (leafletMap) {
+    leafletMap.invalidateSize();
+  }
+});
+
+window.addEventListener('orientationchange', () => {
+  setTimeout(() => {
+    if (leafletMap) leafletMap.invalidateSize();
+  }, 200);
 });
 
 // Application entry point on DOMContentLoaded

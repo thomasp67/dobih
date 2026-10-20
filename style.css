@@ -349,14 +349,18 @@ body {
    -------------------------------------------------------------------------- */
 .drawer-body {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 16px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
   align-items: stretch;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 @media (min-width: 960px) {
   .drawer-body {
     grid-template-columns: minmax(0, 70fr) minmax(0, 30fr);
+    gap: 16px;
   }
 }
 
@@ -364,8 +368,12 @@ body {
 .drawer-left-col {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   height: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 /* Top toolbar inside drawer: Carousel Prev/Next, Pin mode, External links */
@@ -429,13 +437,15 @@ body {
    -------------------------------------------------------------------------- */
 #terrain-map-container {
   width: 100%;
+  max-width: 100%;
   aspect-ratio: 16 / 9;
-  min-height: 220px;
+  min-height: 200px;
   background: #1e293b;
   border-radius: 6px;
   overflow: hidden;
   z-index: 5;
   position: relative;
+  box-sizing: border-box;
 }
 
 /* Fullscreen mode toggle for map */
@@ -457,8 +467,9 @@ body {
    -------------------------------------------------------------------------- */
 #drawer-photo-container {
   width: 100%;
+  max-width: 100%;
   aspect-ratio: 16 / 9;
-  min-height: 220px;
+  min-height: 200px;
   background: #090d16;
   border-radius: 6px;
   overflow: hidden;
@@ -469,6 +480,7 @@ body {
   justify-content: center;
   padding: 0;
   border: 1px solid var(--border-color);
+  box-sizing: border-box;
 }
 
 #drawer-hill-photo {
@@ -485,6 +497,10 @@ body {
   justify-content: space-between;
   align-items: center;
   padding-top: 4px;
+  width: 100%;
+  box-sizing: border-box;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 /* Tab buttons for Map and Photo */
@@ -570,8 +586,10 @@ body {
   border: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  height: 100%;
+  gap: 14px;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
   overflow-y: auto;
 }
 
@@ -580,6 +598,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* Individual key-value metadata row */
@@ -590,6 +610,9 @@ body {
   gap: 8px;
   padding-bottom: 4px;
   border-bottom: 1px solid rgba(51, 65, 85, 0.4);
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .detail-line span {
@@ -605,6 +628,9 @@ body {
   font-weight: 600;
   text-align: right;
   word-break: break-word;
+  overflow-wrap: break-word;
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 .detail-line a {
@@ -655,6 +681,13 @@ body {
   border: 1px solid var(--border-color);
   border-radius: 8px;
   margin-bottom: 24px;
+  width: 100%;
+}
+
+@media (max-width: 767.98px) {
+  .table-responsive {
+    overflow-x: hidden; /* Prevent horizontal scrolling on mobile */
+  }
 }
 
 table {
@@ -665,7 +698,7 @@ table {
   table-layout: fixed;
 }
 
-@media (min-width: 640px) {
+@media (min-width: 768px) {
   table {
     font-size: 0.9rem;
   }
@@ -679,7 +712,7 @@ th, td {
   text-overflow: ellipsis;
 }
 
-@media (min-width: 640px) {
+@media (min-width: 768px) {
   th, td {
     padding: 10px 16px;
   }
@@ -709,36 +742,40 @@ tr.row-selected td {
 
 /* --------------------------------------------------------------------------
    12. COLUMN WIDTH ALLOCATIONS
-   Mobile-first: On mobile (< 640px), only Name and Height are displayed in the
+   Mobile-first: On mobile (< 768px), only Name and Height are displayed in the
    table rows, giving summits and heights maximum breathing room without wrap.
    Classification is displayed cleanly inside the accordion drawer.
-   On tablet & desktop (>= 640px), all 3 columns (Name, Classification, Height)
+   On tablet & desktop (>= 768px), all 3 columns (Name, Classification, Height)
    are displayed side-by-side.
    -------------------------------------------------------------------------- */
 .col-name {
-  width: 64%;
+  width: 65%;
   text-align: left;
 }
 
 .col-class {
-  display: none;
-  text-align: right;
+  display: none !important;
+  width: 0 !important;
+  padding: 0 !important;
+  border: none !important;
 }
 
 .col-height {
-  width: 36%;
+  width: 35%;
   text-align: right;
   white-space: nowrap;
 }
 
-@media (min-width: 640px) {
+@media (min-width: 768px) {
   .col-name {
     width: 38%;
   }
   .col-class {
-    display: table-cell;
-    width: 44%;
+    display: table-cell !important;
+    width: 44% !important;
+    padding: 10px 16px !important;
     text-align: right;
+    border-bottom: 1px solid var(--border-color) !important;
   }
   .col-height {
     width: 18%;
@@ -750,8 +787,8 @@ tr.row-selected td {
     width: 35%;
   }
   .col-class {
-    display: table-cell;
-    width: 50%;
+    display: table-cell !important;
+    width: 50% !important;
     text-align: right;
   }
   .col-height {
@@ -760,77 +797,95 @@ tr.row-selected td {
 }
 
 /* Header subtitle & mobile drawer spacing */
-@media (max-width: 639.98px) {
+@media (max-width: 767.98px) {
   #results-count {
     display: block;
     font-size: 0.72rem !important;
     margin-top: 2px;
   }
+  .inline-drawer-cell {
+    padding: 0 !important;
+  }
   .inline-drawer-wrapper {
     padding: 8px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
   }
   .drawer-top-row {
     padding: 6px 8px;
-    gap: 8px;
+    gap: 6px;
   }
   .external-links-inline {
-    font-size: 0.7rem;
+    width: 100%;
+    margin-top: 2px;
+    padding-top: 4px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    font-size: 0.72rem;
+    gap: 4px 8px;
+  }
+  .drawer-tabs-left {
+    flex-wrap: wrap;
     gap: 4px;
+  }
+  .drawer-tab-btn {
+    padding: 4px 8px;
+    font-size: 0.7rem;
+  }
+  .drawer-tabs-center {
+    order: 3;
+    width: 100%;
+    padding: 2px 0;
+  }
+  .drawer-right-col {
+    padding: 8px 10px;
+    gap: 10px;
+    height: auto;
+    overflow: visible;
   }
 }
 
 /* --------------------------------------------------------------------------
-   13. ROW CLASSIFICATION BADGES & ACCORDION CLASSIFICATION
+   13. ACCORDION CLASSIFICATION ROW & BADGES
+   Single classification row at the top of the accordion drawer.
+   Wraps cleanly onto multiple lines if a hill has multiple classifications.
    -------------------------------------------------------------------------- */
-.row-badge-container {
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 4px;
-  overflow: hidden;
-  justify-content: flex-end;
-}
-
-/* Badges container inside drawer */
-.drawer-badge-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  align-items: center;
-}
-
-.detail-line .drawer-badge-container {
-  justify-content: flex-end;
-  max-width: 70%;
-}
-
-.detail-line.drawer-classification-line {
-  align-items: center;
-}
-
-/* Mobile Quick Badges Bar at top of drawer */
-.drawer-mobile-badges-bar {
+.drawer-classification-row {
   display: flex;
   align-items: center;
   gap: 8px;
   background: rgba(15, 23, 42, 0.7);
   border: 1px solid var(--border-color);
   border-radius: 6px;
-  padding: 8px 10px;
+  padding: 6px 10px;
   flex-wrap: wrap;
+  width: 100%;
+  box-sizing: border-box;
 }
 
-.drawer-mobile-badges-label {
-  font-size: 0.68rem;
+.drawer-classification-label {
+  font-size: 0.7rem;
   text-transform: uppercase;
   color: var(--text-secondary);
   font-weight: 700;
   flex-shrink: 0;
 }
 
-@media (min-width: 640px) {
-  .drawer-mobile-badges-bar {
-    display: none;
-  }
+.drawer-classification-row .drawer-badge-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  align-items: center;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.row-badge-container {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 4px;
+  overflow: hidden;
+  justify-content: flex-end;
 }
 
 .row-badge {
