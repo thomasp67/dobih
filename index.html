@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Database of British and Irish Hills (DoBIH)</title>
+
+  <!-- ===================================================================
+       EXTERNAL STYLESHEETS
+       1. Leaflet CSS: Required for interactive topographic & satellite maps.
+       2. style.css: Core application stylesheet (dark theme, responsive layout).
+       =================================================================== -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="container">
+  <!-- ===================================================================
+       STICKY TOP BAR
+       Remains pinned at the top of the viewport during scrolling.
+       Contains:
+       - Live search input field with support for single terms and OR / | queries.
+       - Filter panel toggle button displaying the active filter count badge.
+       - Sort order dropdown (Height, Drop/Prominence, Name, Database Number).
+       =================================================================== -->
+  <div class="sticky-top-bar" id="sticky-top-bar">
+    <!-- Live search input: Filter by hill name, alternate name, county, summit feature, or number -->
+    <input type="text" id="filter-search" class="search-input" placeholder="Search hill name, area, classification, summit feature, or number... (use OR or | for multiple)">
+
+    <!-- Button to toggle visibility of the collapsible filter panel -->
+    <button class="filters-toggle-btn" type="button" onclick="toggleOptionsPanel()">
+      <span>Filters</span>
+      <span class="active-filter-badge" id="accordion-active-badge">0 active</span>
+    </button>
+
+    <!-- Sort selector: Triggers sortHills() and re-renders table -->
+    <select id="sort-order" class="input-control" style="width: auto; padding: 12px 14px; font-size: 0.95rem; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
+      <option value="height-desc">Height (Highest First)</option>
+      <option value="height-asc">Height (Lowest First)</option>
+      <option value="drop-desc">Drop (Highest First)</option>
+      <option value="name-asc">Name (A-Z)</option>
+      <option value="number-asc">Database Number</option>
+    </select>
+
+    <!-- Direct link to Photos -->
+    <a href="photos.html" class="filters-toggle-btn" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;" title="Open Photos App">
+      <span>📷 Photos</span>
+    </a>
+  </div>
+
+  <!-- ===================================================================
+       COLLAPSIBLE FILTERS PANEL
+       Opened and closed via toggleOptionsPanel().
+       Contains:
+       1. Matching mode toggle (OR vs AND logic) and "Clear all selections" button.
+       2. Country chips (Scotland, England, Wales, Ireland, Isle of Man).
+       3. Major hill classification chips (Munros, Corbetts, Grahams, Wainrights, etc.).
+       4. Other lists chips (Trail 100, County Tops, Islands, Tumps, Has Photos, etc.).
+       5. Detailed dropdown/numeric filters (Area/County, Min Height, Min Drop).
+       =================================================================== -->
+  <section class="filter-panel" id="options-panel">
+    <!-- Controls row: OR / AND mode toggle and Clear button -->
+    <div class="options-controls-row">
+      <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+        <span style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 700;">Matching Mode:</span>
+        <div class="mode-switch-wrap">
+          <!-- In OR mode, hills matching ANY selected filter are shown. In AND mode, hills must match ALL selected filters. -->
+          <button id="mode-or" class="mode-btn active" type="button" onclick="setMatchMode('OR')">OR</button>
+          <button id="mode-and" class="mode-btn" type="button" onclick="setMatchMode('AND')">AND</button>
+        </div>
+      </div>
+      <!-- Resets all chips, dropdowns, and numeric filters -->
+      <button class="btn-clear-chips" type="button" onclick="clearAllChips()">Clear all selections</button>
+    </div>
+
+    <!-- Country Filter Chips -->
+    <div class="lists-group">
+      <div class="group-title">Countries</div>
+      <div class="quick-filters">
+        <div class="filter-chip chip-country" data-country="S" title="All hills located in Scotland">Scotland</div>
+        <div class="filter-chip chip-country" data-country="E" title="All hills located in England">England</div>
+        <div class="filter-chip chip-country" data-country="W" title="All hills located in Wales">Wales</div>
+        <div class="filter-chip chip-country" data-country="I" title="All hills located in Ireland">Ireland</div>
+        <div class="filter-chip chip-country" data-country="M" title="All hills located on the Isle of Man">Isle of Man</div>
+      </div>
+    </div>
+
+    <!-- Major Classification Filter Chips (Munros, Corbetts, Grahams, etc.) -->
+    <div class="lists-group">
+      <div class="group-title">Major Lists</div>
+      <div class="quick-filters">
+        <div class="filter-chip" data-list="M" title="Munro (Scottish mountains 3,000 ft)">Munro</div>
+        <div class="filter-chip" data-list="MT" title="Munro Top (Subsidiary summits of Munros 3,000 ft)">Munro Top</div>
+        <div class="filter-chip" data-list="C" title="Corbett (Scottish hills 2,500–3,000 ft with 500 ft drop)">Corbett</div>
+        <div class="filter-chip" data-list="G" title="Graham (Scottish hills 2,000–2,500 ft with 150 m drop)">Graham</div>
+        <div class="filter-chip" data-list="D" title="Donald (Hills over 2,000 ft in the Scottish Lowlands with specified criteria)">Donald</div>
+        <div class="filter-chip" data-list="DT" title="Donald Top (Subsidiary summits of Donalds in the Scottish Lowlands)">Donald Top</div>
+        <div class="filter-chip" data-list="Mur" title="Murdo (Scottish hills over 3,000 ft with 30 m drop)">Murdo</div>
+        <div class="filter-chip" data-list="HF" title="Highland Five (Scottish Highlands hills between 500m–609m with 30m drop)">Highland Five</div>
+        <div class="filter-chip" data-list="GT" title="Graham Top (Subsidiary summits of Grahams)">Graham Top</div>
+        <div class="filter-chip" data-list="F" title="Furth (Mountains in England, Wales, and Ireland over 3,000 ft with 30m drop)">Furth</div>
+        <div class="filter-chip" data-list="Hew" title="Hewitt (Hills in England, Wales, and Ireland over 2,000 ft with 30m drop)">Hewitt</div>
+        <div class="filter-chip" data-list="N" title="Nuttall (Hills in England and Wales over 2,000 ft with 15m drop)">Nuttall</div>
+        <div class="filter-chip" data-list="W" title="Wainwright (The 214 classic Lake District fells by Alfred Wainwright)">Wainwright</div>
+        <div class="filter-chip" data-list="WO" title="Wainwright Outlying Fell (Additional 116 outlying fells in the Lake District)">Wainwright Outlying Fell</div>
+        <div class="filter-chip" data-list="Dew" title="Dewey (Hills in England, Wales, and Isle of Man between 500m-610m with 30m drop)">Dewey</div>
+        <div class="filter-chip" data-list="DDew" title="Donald Dewey (Scottish Lowlands hills between 500m-609m with 30m drop)">Donald Dewey</div>
+        <div class="filter-chip" data-list="E" title="Ethel (Hills in the Peak District over 400m named after Ethel Haythornthwaite)">Ethel</div>
+        <div class="filter-chip" data-list="A" title="Arderin (Irish mountains above 500m with 30m drop)">Arderin</div>
+        <div class="filter-chip" data-list="VL" title="Vandeleur-Lynam (Irish hills over 600m with 15m drop)">Vandeleur-Lynam</div>
+        <div class="filter-chip" data-list="Dil" title="Dillon (Irish hills over 2,000 ft from Paddy Dillon's guidebook)">Dillon</div>
+        <div class="filter-chip" data-list="Ca" title="Carn (Irish summits between 100m-400m with 30m drop)">Carn</div>
+        <div class="filter-chip" data-list="Bin" title="Binnion (Irish coastal and regional summits)">Binnion</div>
+        <div class="filter-chip" data-list="Ma" title="Marilyn (British and Irish hills with 150m drop regardless of height)">Marilyn</div>
+        <div class="filter-chip" data-list="Hu" title="Hump (Hills of any height with 100m drop)">Hump</div>
+        <div class="filter-chip" data-list="Sim" title="Simm (Hills of any height with 30m drop)">Simm</div>
+        <div class="filter-chip" data-list="Tu" title="Tump (Thirty & Upward Metre Prominences-all British hills with 30m drop)">Tump</div>
+        <div class="filter-chip" data-list="5" title="Dodd (Hills between 500m-599m with 30m drop)">Dodd</div>
+        <div class="filter-chip" data-list="xMT" title="Deleted Munro Top (Demoted or removed former Munro Tops)">Deleted Munro Top</div>
+        <div class="filter-chip" data-list="xC" title="Deleted Corbett (Former Corbetts)">Deleted Corbett</div>
+        <div class="filter-chip" data-list="xG" title="Deleted Graham (Former Grahams)">Deleted Graham</div>
+        <div class="filter-chip" data-list="xN" title="Deleted Nuttall (Former Nuttalls)">Deleted Nuttall</div>
+        <div class="filter-chip" data-list="xDT" title="Deleted Donald Top">Deleted Donald Top</div>
+      </div>
+    </div>
+
+    <!-- Other Classification Filter Chips (County Tops, Tump bands, Photos, etc.) -->
+    <div class="lists-group">
+      <div class="group-title">Other Lists</div>
+      <div class="quick-filters">
+        <div class="filter-chip" data-list="T100" title="Trail 100 (Curated list of 100 iconic British mountain summits)">Trail 100</div>
+        <div class="filter-chip" data-list="HHB" title="High Hill of Britain (Major prominent summits across the UK)">High Hill of Britain</div>
+        <div class="filter-chip" data-list="B" title="Birkett (Lake District hills over 1,000 ft by Bill Birkett)">Birkett</div>
+        <div class="filter-chip" data-list="Sy" title="Synge (Hills in Ireland compiled by Tom Synge)">Synge</div>
+        <div class="filter-chip" data-list="Fel" title="Fellranger (Regional hill classifications by Mark Richards)">Fellranger</div>
+        <div class="filter-chip" data-list="CoH" title="Historic County Top (Pre-1974 historic county high points)">Historic County Top</div>
+        <div class="filter-chip" data-list="CoA" title="Admin County Top (1974-1990s administrative county high points)">Admin County Top</div>
+        <div class="filter-chip" data-list="CoU" title="Current County / Unitary Top (Current county/unitary authority high points)">Current County Top</div>
+        <div class="filter-chip" data-list="CoL" title="London Borough Top (Highest points of London boroughs)">London Borough Top</div>
+        <div class="filter-chip" data-list="SIB" title="Significant Islands of Britain (Prominent islands across British waters)">Significant Island</div>
+        <div class="filter-chip" data-list="4" title="400-499m Tump">400-499m Tump</div>
+        <div class="filter-chip" data-list="3" title="300-399m Tump">300-399m Tump</div>
+        <div class="filter-chip" data-list="2" title="200-299m Tump">200-299m Tump</div>
+        <div class="filter-chip" data-list="1" title="100-199m Tump">100-199m Tump</div>
+        <div class="filter-chip" data-list="0" title="0-99m Tump">0-99m Tump</div>
+        <div class="filter-chip" data-list="sMa" title="Sub-Marilyn (Marilyns just short of 150m drop, 140m-149m)">Sub-Marilyn</div>
+        <div class="filter-chip" data-list="sHu" title="Sub-Hump (Humps just short of 100m drop, 90m-99m)">Sub-Hump</div>
+        <div class="filter-chip" data-list="sSim" title="Sub-Simm (Simms just short of 30m drop, 20m-29m)">Sub-Simm</div>
+        <div class="filter-chip" data-list="s5" title="Sub-Dodd">Sub-Dodd</div>
+        <div class="filter-chip" data-list="s4" title="Sub-400m Tump">Sub-400m Tump</div>
+        <div class="filter-chip" data-list="CT" title="Current Top">Current Top</div>
+        <div class="filter-chip" data-list="BL" title="Buxton & Lewis">Buxton & Lewis</div>
+        <div class="filter-chip" data-list="Bg" title="Bridge">Bridge</div>
+        <div class="filter-chip" data-list="Y" title="Yeaman">Yeaman</div>
+        <div class="filter-chip" data-list="Cm" title="Clem">Clem</div>
+        <div class="filter-chip" data-list="Un" title="Unclassified hills">Unclassified</div>
+        <div class="filter-chip" data-list="O" title="Other miscellaneous lists">Other List</div>
+        <!-- Special chip to filter hills that have photos attached -->
+        <div class="filter-chip" data-list="Ph" title="Has Photos">Photos</div>
+      </div>
+    </div>
+
+    <!-- Detailed Form Filters (Area dropdown populated dynamically, Min Height, Min Drop) -->
+    <div class="detailed-filters-grid">
+      <div class="filter-item">
+        <label for="filter-county">Area</label>
+        <select id="filter-county" class="input-control">
+          <option value="">All Areas</option>
+        </select>
+      </div>
+      <div class="filter-item">
+        <label for="filter-min-height">Min Height (m)</label>
+        <input type="number" id="filter-min-height" class="input-control" placeholder="e.g. 914">
+      </div>
+      <div class="filter-item">
+        <label for="filter-min-drop">Min Drop / Prominence (m)</label>
+        <input type="number" id="filter-min-drop" class="input-control" placeholder="e.g. 150">
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================
+       MAIN DATA TABLE
+       Renders the list of hills. Clicking any row expands an inline drawer.
+       Columns:
+       - Name: Hill name, alternate names (if any), and total results counter.
+       - Classification: Color-coded badge pills for list memberships.
+       - Height: Summit elevation in metres and feet.
+       =================================================================== -->
+  <div class="table-responsive" id="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th class="col-name">Name <span id="results-count" style="font-weight: normal; color: var(--text-secondary); font-size: 0.85rem;">(Showing 0 hills)</span></th>
+          <th class="col-class" style="text-align: right;">Classification</th>
+          <th class="col-height" style="text-align: right;">Height</th>
+        </tr>
+      </thead>
+      <tbody id="table-body">
+        <!-- Rows dynamically injected by script.js (renderTable / appendTableRows) -->
+        <tr><td colspan="3" style="text-align: center; color: var(--text-secondary); padding: 32px;">No data loaded yet.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Floating "Back to Top" button (visible after scrolling down 400px) -->
+<button id="back-to-top" onclick="scrollToTop()" title="Back to top">▲</button>
+
+<!-- ===================================================================
+     SCRIPTS
+     1. Leaflet JS: Interactive map rendering engine.
+     2. script.js: Application logic (filtering, search, map/photo rendering).
+     =================================================================== -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="script.js"></script>
+</body>
+</html>

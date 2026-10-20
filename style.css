@@ -1,0 +1,803 @@
+/* ==========================================================================
+   DoBIH (Database of British and Irish Hills) - Stylesheet
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. DESIGN TOKENS & CSS VARIABLES
+   Centralized dark-theme color palette and shared UI variables.
+   -------------------------------------------------------------------------- */
+:root {
+  --bg-base: #0f172a;        /* Main dark background (slate-900) */
+  --bg-card: #1e293b;        /* Card & panel background (slate-800) */
+  --bg-input: #334155;       /* Input & button background (slate-700) */
+  --border-color: #334155;   /* Subtle divider border */
+  --accent: #10b981;         /* Primary emerald green accent */
+  --accent-hover: #059669;   /* Darker emerald on hover/active states */
+  --text-primary: #f8fafc;   /* High-contrast heading and body text */
+  --text-secondary: #94a3b8; /* Muted subtitle and label text */
+}
+
+/* --------------------------------------------------------------------------
+   2. GLOBAL RESETS & BASE TYPOGRAPHY
+   -------------------------------------------------------------------------- */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  line-height: 1.5;
+  padding: 10px;
+}
+
+/* Add comfortable outer padding on tablet and desktop screens */
+@media (min-width: 640px) {
+  body {
+    padding: 20px;
+  }
+}
+
+/* Maximum content width constraint */
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* --------------------------------------------------------------------------
+   3. STICKY TOP BAR
+   Contains the search box, filters toggle button, and sort dropdown.
+   Stays fixed at the top of the viewport when scrolling.
+   -------------------------------------------------------------------------- */
+.sticky-top-bar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background-color: var(--bg-base);
+  padding: 8px 0 12px 0;
+  margin-bottom: 8px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+@media (min-width: 640px) {
+  .sticky-top-bar {
+    padding: 10px 0 16px 0;
+    gap: 12px;
+  }
+}
+
+/* Live search input field */
+.search-input {
+  flex: 1 1 200px;
+  min-width: 140px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  color: #fff;
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  outline: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+@media (min-width: 640px) {
+  .search-input {
+    min-width: 280px;
+    padding: 12px 16px;
+    font-size: 1rem;
+  }
+}
+
+.search-input:focus {
+  border-color: var(--accent);
+}
+
+/* Button that expands/collapses the filter options panel */
+.filters-toggle-btn {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  color: #fff;
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+@media (min-width: 640px) {
+  .filters-toggle-btn {
+    padding: 12px 20px;
+    font-size: 0.95rem;
+  }
+}
+
+.filters-toggle-btn:hover {
+  background-color: var(--bg-input);
+  border-color: var(--accent);
+}
+
+/* Badge showing the count of currently active filters */
+.active-filter-badge {
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-weight: 700;
+  display: none; /* Shown dynamically via script.js updateActiveBadge() */
+}
+
+/* --------------------------------------------------------------------------
+   4. COLLAPSIBLE FILTER PANEL
+   Hidden by default; toggled via the .open class.
+   -------------------------------------------------------------------------- */
+.filter-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+  display: none;
+}
+
+@media (min-width: 640px) {
+  .filter-panel {
+    padding: 20px;
+    margin-bottom: 24px;
+  }
+}
+
+.filter-panel.open {
+  display: block;
+}
+
+/* Controls header inside the filter panel: OR/AND switcher & Clear button */
+.options-controls-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+/* Capsule toggle wrapper for OR / AND mode */
+.mode-switch-wrap {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--bg-base);
+  padding: 2px;
+  border-radius: 16px;
+  border: 1px solid var(--border-color);
+}
+
+.mode-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 3px 6px;
+  border-radius: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.mode-btn.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* Link-style button to clear all filter selections */
+.btn-clear-chips {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.btn-clear-chips:hover {
+  color: #6ee7b7;
+}
+
+/* Grouping container for lists of filter chips */
+.lists-group {
+  margin-bottom: 12px;
+}
+
+.lists-group:last-child {
+  margin-bottom: 0;
+}
+
+.group-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #64748b;
+  margin-bottom: 6px;
+  letter-spacing: 0.5px;
+}
+
+.quick-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Interactive filter chips (pills) */
+.filter-chip {
+  padding: 4px 10px;
+  border-radius: 16px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid var(--border-color);
+  background: var(--bg-base);
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.15s ease;
+}
+
+.filter-chip:hover {
+  color: #fff;
+  border-color: var(--chip-color, var(--text-secondary));
+}
+
+/* Active filter chip receives dynamic category color via CSS variables */
+.filter-chip.active {
+  background: var(--chip-color, var(--accent));
+  color: var(--chip-text, #fff);
+  border-color: var(--chip-color, var(--accent));
+}
+
+/* --------------------------------------------------------------------------
+   5. DETAILED FILTERS GRID
+   Dropdown for geographic Area and inputs for Min Height and Min Drop.
+   -------------------------------------------------------------------------- */
+.detailed-filters-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-color);
+}
+
+@media (min-width: 640px) {
+  .detailed-filters-grid {
+    gap: 16px;
+    margin-top: 16px;
+    padding-top: 16px;
+  }
+}
+
+.filter-item label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.filter-item select,
+.filter-item input {
+  width: 100%;
+}
+
+/* Shared control styling for dropdowns and numeric inputs */
+.input-control {
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  color: #fff;
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  outline: none;
+}
+
+.input-control:focus {
+  border-color: var(--accent);
+}
+
+/* --------------------------------------------------------------------------
+   6. INLINE EXPANSION ROW DRAWER
+   Inserted directly beneath the clicked table row to reveal map, photo,
+   elevation statistics, OS grid references, and notes.
+   -------------------------------------------------------------------------- */
+.inline-drawer-row td {
+  padding: 0 !important;
+  background: #111827 !important;
+}
+
+.inline-drawer-wrapper {
+  background: var(--bg-card);
+  border-top: 2px solid var(--accent);
+  border-bottom: 2px solid var(--accent);
+  padding: 12px;
+  box-shadow: inset 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+@media (min-width: 640px) {
+  .inline-drawer-wrapper {
+    padding: 16px;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   7. TWO-COLUMN DRAWER LAYOUT (70% Left / 30% Right)
+   On screens >= 960px, uses a two-column grid split:
+   - Left column (70%): Carousel controls, Pins selector, External links,
+     16:9 Leaflet Map, 16:9 Photo, and bottom tab bar.
+   - Right column (30%): Hill details block (Area, Drop, Parent, Grid Ref,
+     OS map sheet links) and notes list.
+   -------------------------------------------------------------------------- */
+.drawer-body {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  align-items: stretch;
+}
+
+@media (min-width: 960px) {
+  .drawer-body {
+    grid-template-columns: minmax(0, 70fr) minmax(0, 30fr);
+  }
+}
+
+/* Left Section (70%) */
+.drawer-left-col {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+}
+
+/* Top toolbar inside drawer: Carousel Prev/Next, Pin mode, External links */
+.drawer-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 6px;
+  flex-wrap: wrap;
+  background: var(--bg-base);
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+}
+
+/* Small utility button for navigation & tools */
+.btn-icon-small {
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  color: #fff;
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 0.7rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.btn-icon-small:hover {
+  background: var(--accent);
+}
+
+/* External links list (Google Maps, PeakFinder, Hill Bagging, Streetmap, etc.) */
+.external-links-inline {
+  font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.external-links-inline a {
+  color: #38bdf8;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.external-links-inline a:hover {
+  text-decoration: underline;
+  color: #7dd3fc;
+}
+
+.link-separator {
+  color: var(--text-secondary);
+}
+
+/* --------------------------------------------------------------------------
+   8. TERRAIN MAP CONTAINER
+   Fixed 16:9 aspect ratio container matching modern widescreen photos.
+   -------------------------------------------------------------------------- */
+#terrain-map-container {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  min-height: 220px;
+  background: #1e293b;
+  border-radius: 6px;
+  overflow: hidden;
+  z-index: 5;
+  position: relative;
+}
+
+/* Fullscreen mode toggle for map */
+#terrain-map-container.fullscreen-map {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  min-height: 100vh !important;
+  aspect-ratio: auto !important;
+  z-index: 99999 !important;
+  border-radius: 0 !important;
+}
+
+/* --------------------------------------------------------------------------
+   9. DRAWER PHOTO CONTAINER & VIEW TABS
+   Displays 1600x900 center-cropped summit photos.
+   -------------------------------------------------------------------------- */
+#drawer-photo-container {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  min-height: 220px;
+  background: #090d16;
+  border-radius: 6px;
+  overflow: hidden;
+  z-index: 5;
+  position: relative;
+  display: none; /* Shown when 'Photo' tab is active */
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--border-color);
+}
+
+#drawer-hill-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 4px;
+  cursor: zoom-in;
+}
+
+/* Drawer View Tabs Bar (placed directly below Map/Photo container) */
+.drawer-view-tabs {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 4px;
+}
+
+/* Tab buttons for Map and Photo */
+.drawer-tab-btn {
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  padding: 5px 14px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  user-select: none;
+  transition: all 0.15s ease;
+}
+
+.drawer-tab-btn:hover {
+  color: #fff;
+  border-color: var(--text-secondary);
+}
+
+.drawer-tab-btn.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+/* Left zone of tab bar: contains [ Map ] [ Photos of ] [ Taken from ] buttons */
+.drawer-tabs-left {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+/* Center zone of tab bar: contains photo title centered below photo */
+.drawer-tabs-center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0 8px;
+  text-align: center;
+}
+
+/* Photo comment/title text */
+#photo-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-align: center;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+#photo-title:hover {
+  color: var(--accent);
+}
+
+/* Right zone of tab bar: contains Prev / Next photo buttons & counter */
+.drawer-tabs-right {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+/* --------------------------------------------------------------------------
+   10. RIGHT SECTION (30%): DETAILS & NOTES PANE
+   -------------------------------------------------------------------------- */
+.drawer-right-col {
+  padding: 12px;
+  background: var(--bg-base);
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.unified-details-block {
+  font-size: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Individual key-value metadata row */
+.detail-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(51, 65, 85, 0.4);
+}
+
+.detail-line span {
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.detail-line strong {
+  color: #fff;
+  font-weight: 600;
+  text-align: right;
+  word-break: break-word;
+}
+
+.detail-line a {
+  color: #38bdf8;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.detail-line a:hover {
+  text-decoration: underline;
+  color: #7dd3fc;
+}
+
+/* Notes & observations pane */
+.drawer-notes-pane {
+  font-size: 0.85rem;
+}
+
+.drawer-notes-pane span {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.drawer-notes-pane ul {
+  margin-left: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.82rem;
+}
+
+.drawer-notes-pane li {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  white-space: normal;
+}
+
+/* --------------------------------------------------------------------------
+   11. DATA TABLE VIEW
+   -------------------------------------------------------------------------- */
+.table-responsive {
+  overflow-x: auto;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  margin-bottom: 24px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  text-align: left;
+  table-layout: fixed;
+}
+
+@media (min-width: 640px) {
+  table {
+    font-size: 0.9rem;
+  }
+}
+
+th, td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (min-width: 640px) {
+  th, td {
+    padding: 10px 16px;
+  }
+}
+
+th {
+  background: rgba(15, 23, 42, 0.6);
+  color: var(--text-secondary);
+  font-weight: 600;
+  user-select: none;
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+
+tr:hover td {
+  background: rgba(51, 65, 85, 0.4);
+  cursor: pointer;
+}
+
+/* Selected row highlight state */
+tr.row-selected td {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+/* --------------------------------------------------------------------------
+   12. COLUMN WIDTH ALLOCATIONS
+   Guarantees that Height values are never truncated or clipped across viewports.
+   -------------------------------------------------------------------------- */
+.col-name {
+  width: 40%;
+  text-align: left;
+}
+
+.col-class {
+  width: 36%;
+  text-align: right;
+}
+
+.col-height {
+  width: 24%;
+  text-align: right;
+}
+
+@media (min-width: 640px) {
+  .col-name { width: 38%; }
+  .col-class { width: 44%; }
+  .col-height { width: 18%; }
+}
+
+@media (min-width: 960px) {
+  .col-name { width: 35%; }
+  .col-class { width: 50%; }
+  .col-height { width: 15%; }
+}
+
+/* --------------------------------------------------------------------------
+   13. ROW CLASSIFICATION BADGES
+   Rendered in the middle column of each table row.
+   -------------------------------------------------------------------------- */
+.row-badge-container {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 4px;
+  overflow: hidden;
+  justify-content: flex-end;
+}
+
+.row-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  white-space: nowrap;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  cursor: help;
+}
+
+/* --------------------------------------------------------------------------
+   14. FLOATING BACK TO TOP BUTTON
+   -------------------------------------------------------------------------- */
+#back-to-top {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 999;
+  background-color: var(--accent);
+  color: #fff;
+  border: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  font-size: 1.2rem;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  display: none; /* Displayed dynamically when window.scrollY > 400 */
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.15s ease;
+}
+
+#back-to-top:hover {
+  background-color: var(--accent-hover);
+}
+
+/* --------------------------------------------------------------------------
+   15. LEAFLET MAP MARKER TOOLTIPS
+   -------------------------------------------------------------------------- */
+.marker-tooltip {
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid var(--border-color);
+  color: #fff;
+  font-size: 0.75rem;
+  padding: 4px 8px;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
