@@ -1089,8 +1089,11 @@ function renderTable(pageItems, startIdx) {
   if (currentSelectedIndex !== -1) {
     requestAnimationFrame(() => {
       const selHill = filteredHills[currentSelectedIndex];
-      initMapForSelected(selHill);
-      initPhotoForSelected(selHill);
+      if (!selHill) return;
+      const isSameHill = (currentlyLoadedHillNumber !== null && String(currentlyLoadedHillNumber) === String(selHill.number));
+      initMapForSelected(selHill, isSameHill);
+      initPhotoForSelected(selHill, isSameHill);
+      currentlyLoadedHillNumber = selHill.number;
     });
   }
 }
@@ -1182,11 +1185,11 @@ function updateBackgroundHillMarkers(selectedHill) {
  * - Registers dynamic viewport moveend listeners to update background pins as the user pans.
  * 
  * @param {Object} hill - Selected hill record.
+ * @param {boolean} [isSameHill=false] - Whether the selected hill is already the currently loaded hill.
  */
-function initMapForSelected(hill) {
+function initMapForSelected(hill, isSameHill = false) {
   if (!hill.latitude || !hill.longitude) return;
 
-  const isSameHill = (currentlyLoadedHillNumber !== null && String(currentlyLoadedHillNumber) === String(hill.number));
   let initialCenter = [hill.latitude, hill.longitude];
   let initialZoom = 13;
 
@@ -1795,9 +1798,9 @@ function navigatePhoto(direction) {
  * Initializes photo viewer state when a summit is selected.
  * 
  * @param {Object} hill - Selected hill record.
+ * @param {boolean} [isSameHill=false] - Whether the selected hill is already the currently loaded hill.
  */
-async function initPhotoForSelected(hill) {
-  const isSameHill = (currentlyLoadedHillNumber !== null && String(currentlyLoadedHillNumber) === String(hill.number));
+async function initPhotoForSelected(hill, isSameHill = false) {
   const activeTabToRestore = isSameHill ? currentDrawerTab : 'map';
 
   if (!isSameHill) {
@@ -1852,8 +1855,6 @@ async function initPhotoForSelected(hill) {
     tabsEl.style.display = 'none';
     switchDrawerTab('map');
   }
-
-  currentlyLoadedHillNumber = hill.number;
 }
 
 /* ============================================================================
@@ -1882,7 +1883,6 @@ function toggleSummit(index) {
 function selectSummit(index) {
   if (index < 0 || index >= filteredHills.length) return;
   currentSelectedIndex = index;
-  currentlyLoadedHillNumber = filteredHills[index]?.number;
   
   if (index >= displayedCount) {
     displayedCount = Math.ceil((index + 1) / batchSize) * batchSize;
