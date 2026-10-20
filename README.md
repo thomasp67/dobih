@@ -17,32 +17,43 @@ A high-performance, single-page web application and photo management system desi
 ## 2. Directory & File Structure
 
 ```
-H:\htdocs\hills\
-├── index.html                       # Main catalog entry point and UI markup
-├── style.css                        # Main stylesheet (dark theme, responsive grid, CSS tokens)
-├── script.js                        # Main client engine (filtering, sorting, mapping, photo display)
-├── dobih.json                       # Streamlined DoBIH dataset (~20,000 summits)
-├── README.md                        # Complete project documentation and specifications
+dobih/
 │
-├── photos.html                      # Interactive photo curation and cropping workbench
-├── photos.css                       # Stylesheet for the photos workbench
-├── photos.js                        # Controller for staging queue, cropping, live, and archive tabs
+├── [PUBLIC / STATIC HOSTING ASSETS]   # Deployed to web hosting (100% static HTML, CSS, JS, JSON, images)
+│   ├── index.html                     # Main hill catalog entry point and UI markup
+│   ├── style.css                      # Main stylesheet (dark theme, responsive grid, CSS tokens)
+│   ├── script.js                      # Main client engine (filtering, sorting, mapping, photo display)
+│   ├── dobih.json                     # Precompiled DoBIH dataset (~20,000 summits)
+│   ├── README.md                      # Complete project documentation and specifications
+│   │
+│   └── image/
+│       └── hills/                     # Active 1600x900 cropped live photos for the website
+│           ├── *.jpg                  # Production-optimized 16:9 images
+│           └── photos.json            # Authoritative manifest mapping hill IDs to photos, roles, and captions
 │
-├── api/
-│   └── photos.php                   # Backend API for staging queue, crop dispatch, metadata, and archiving
-│
-├── csv/
-│   ├── DoBIH_v18_5.csv              # Source DoBIH CSV release (source of truth)
-│   └── convert_csv_to_json.ps1     # PowerShell script converting CSV to streamlined UTF-8 non-BOM JSON
-│
-└── image/
-    ├── staging/                     # Landing folder for raw camera/phone photos
-    │   └── archive/                 # Permanent archive of original uncropped master photos
+└── admin/                             # LOCAL ADMIN & DATA PREPARATION (Excluded from hosting upload)
+    ├── index.html / photos.html       # Photo curation studio & data preparation workbench
+    ├── photos.css                     # Workbench stylesheet
+    ├── photos.js                      # Workbench controller & dataset compiler client
     │
-    └── hills/                       # Active 1600x900 cropped live photos for the website
-        ├── photos.json              # Authoritative manifest mapping hill IDs to photos, roles, and captions
-        ├── process_crop.ps1         # Worker script: EXIF orientation, crop, resample, EXIF metadata, photos.json
-        └── optimize_photos.ps1      # Batch optimizer utility for bulk folder processing
+    ├── api/
+    │   └── photos.php                 # PHP backend API (staging queue, crop dispatch, live/archive meta, data compile)
+    │
+    ├── vendor/
+    │   ├── cropper.min.css            # Cropper.js library stylesheet
+    │   └── cropper.min.js             # Cropper.js image cropping library
+    │
+    ├── csv/
+    │   ├── DoBIH_v18_5.csv            # Source DoBIH CSV release (source of truth)
+    │   └── convert_csv_to_json.ps1    # PowerShell script converting CSV to streamlined UTF-8 non-BOM JSON
+    │
+    ├── scripts/
+    │   ├── process_crop.ps1           # Worker script: EXIF orientation, crop, resample, EXIF metadata, photos.json
+    │   └── optimize_photos.ps1        # Batch optimizer utility for bulk folder processing
+    │
+    └── staging/
+        ├── *.jpg                      # Landing queue for raw camera/phone photos
+        └── archive/                   # Permanent archive of original uncropped master photos
 ```
 
 ---
@@ -250,22 +261,30 @@ Clicking any table row expands an inline drawer:
 ## 8. Setup & Reproduction Guide
 
 ### Prerequisites
-- A local web server (PHP 7.4+ enabled for photo workflow APIs; static web server for catalog viewing).
+- A local web server (PHP 7.4+ enabled for admin data preparation & photo workflow; any static web server for catalog viewing).
 - PowerShell 5.1+ / PowerShell Core (for CSV conversion and photo processing scripts).
 
 ### Quick Start
-1. **Clone or place files** into your web root directory (e.g. `H:\htdocs\hills\`).
+1. **Clone or place files** into your web root directory (e.g. `C:\home\htdocs\dobih\`).
 2. **Generate Database**:
-   ```powershell
-   cd csv
-   pwsh ./convert_csv_to_json.ps1
-   Move-Item DoBIH_v18_5.json ../dobih.json -Force
-   ```
-3. **Start Local Web Server**:
-   ```powershell
-   # Using PHP built-in server
-   php -S localhost:8080 -t H:\htdocs\hills
-   ```
-4. **Access the Applications**:
-   - **Main Hill Catalog**: `http://localhost:8080/index.html`
-   - **Photos Workbench**: `http://localhost:8080/photos.html`
+   - Via Admin Web Interface: Navigate to `http://localhost/dobih/admin/` and click **Data Prep** -> **Rebuild dobih.json**.
+   - OR via PowerShell:
+     ```powershell
+     cd admin/csv
+     pwsh ./convert_csv_to_json.ps1
+     ```
+     *(Automatically streams and copies the updated dataset to `dobih.json`)*
+3. **Access the Applications**:
+   - **Main Hill Catalog (Static Website)**: `http://localhost/dobih/index.html`
+   - **Admin & Photo Workbench**: `http://localhost/dobih/admin/`
+
+### Deploying to Web Hosting
+When publishing the site to remote web hosting (e.g., Apache, Nginx, GitHub Pages, Netlify, or static S3 bucket):
+- **Include**:
+  - `index.html`
+  - `style.css`
+  - `script.js`
+  - `dobih.json`
+  - `image/hills/` (live cropped 16:9 images and `photos.json`)
+- **Exclude**:
+  - `admin/` (completely excluded from upload)

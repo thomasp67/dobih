@@ -35,6 +35,7 @@ param(
     [string]$Keywords = "",
 
     [string]$ArchiveFolder = "",
+    [string]$HillsDir = "",
 
     [string]$CroppedFile = "",
 
@@ -57,10 +58,15 @@ try {
         throw "Staging file not found: $StagingFile"
     }
 
-    $hillsDir = $PSScriptRoot
-    if (-not $hillsDir) {
-        $hillsDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+    if (-not $HillsDir) {
+        $candidate = Join-Path $PSScriptRoot "..\..\image\hills"
+        if (Test-Path $candidate) {
+            $HillsDir = (Resolve-Path $candidate).Path
+        } else {
+            $HillsDir = $PSScriptRoot
+        }
     }
+    $hillsDir = (Resolve-Path $HillsDir).Path
     $targetPath = Join-Path $hillsDir $TargetFileName
 
     $tempFile = Join-Path $hillsDir "temp_$TargetFileName"

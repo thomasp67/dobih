@@ -236,7 +236,7 @@ document.addEventListener('DOMContentLoaded', async () => {
  */
 async function loadHillsDatabase() {
   try {
-    const res = await fetch('dobih.json');
+    const res = await fetch('../dobih.json');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const rawHills = await res.json();
 
@@ -1282,7 +1282,7 @@ function renderArchivePhotos() {
       liveStatusHtml = `
         <div class="card-archive-link" style="background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.4);">
           <span>🟢 Live: <b>${escapeHtml(item.liveInfo.file)}</b></span>
-          <button type="button" class="btn btn-sm" onclick="window.open('image/hills/${item.liveInfo.file}', '_blank')" title="View Live cropped 16:9 photo">View</button>
+          <button type="button" class="btn btn-sm" onclick="window.open('../image/hills/${item.liveInfo.file}', '_blank')" title="View Live cropped 16:9 photo">View</button>
         </div>
       `;
     } else {
@@ -1901,3 +1901,103 @@ function setupEventListeners() {
     }
   });
 }
+
+// =====================================================================
+// DATA PREPARATION MODAL (CSV to dobih.json)
+// =====================================================================
+
+async function openDataPrepModal() {
+  const modal = document.getElementById('modal-data-prep');
+  if (!modal) return;
+  modal.style.display = 'flex';
+  const consoleBox = document.getElementById('data-prep-console');
+  if (consoleBox) consoleBox.style.display = 'none';
+
+  await refreshDataPrepStatus();
+}
+
+function closeDataPrepModal() {
+  const modal = document.getElementById('modal-data-prep');
+  if (modal) modal.style.display = 'none';
+}
+
+async function refreshDataPrepStatus() {
+  const csvMeta = document.getElementById('data-csv-meta');
+  const jsonMeta = document.getElementById('data-json-meta');
+  if (csvMeta) csvMeta.textContent = 'Checking...';
+  if (jsonMeta) jsonMeta.textContent = 'Checking...';
+
+  try {
+    const res = await fetch('api/photos.php?action=data_status');
+    const data = await res.json();
+    if (data.success) {
+      if (csvMeta) {
+        csvMeta.textContent = data.csv.exists
+          ? `${data.csv.sizeFormatted} • Modified: ${data.csv.mtimeFormatted}`
+          : '⚠️ Not found';
+      }
+      if (jsonMeta) {
+        jsonMeta.textContent = data.json.exists
+          ? `${data.json.sizeFormatted} • Modified: ${data.json.mtimeFormatted}`
+          : '⚠️ Not compiled yet';
+      }
+    }
+  } catch (err) {
+    if (csvMeta) csvMeta.textContent = 'Error checking';
+    if (jsonMeta) jsonMeta.textContent = 'Error checking';
+  }
+}
+
+async function rebuildDoBIHData() {
+  const btn = document.getElementById('btn-rebuild-data');
+  const consoleBox = document.getElementById('data-prep-console');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Compiling...';
+  }
+  if (consoleBox) {
+    consoleBox.style.display = 'block';
+    consoleBox.textContent = 'Starting PowerShell CSV to JSON conversion...\nPlease wait, processing ~20,000 summits...';
+  }
+
+  try {
+    const res = await fetch('api/photos.php?action=rebuild_data');
+    const data = await res.json();
+    if (data.success) {
+      showToast(data.message || 'dobih.json successfully rebuilt!');
+      if (consoleBox) {
+        consoleBox.textContent = `SUCCESS: ${data.message}\nOutput Size: ${data.outputSizeFormatted}\n\n${data.stdout || ''}`;
+      }
+      await refreshDataPrepStatus();
+      // Reload hill search database in Photos studio
+      await loadDobihDatabase();
+    } else {
+      showToast(data.error || 'Failed to rebuild database', true);
+      if (consoleBox) {
+        consoleBox.textContent = `ERROR:\n${data.error || 'Unknown error'}`;
+      }
+    }
+  } catch (err) {
+    showToast('Network error during build', true);
+    if (consoleBox) {
+      consoleBox.textContent = `Network Error: ${err.message}`;
+    }
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = `
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;">
+          <polyline points="23 4 23 10 17 10"></polyline>
+          <polyline points="1 20 1 14 7 14"></polyline>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        </svg>
+        Rebuild dobih.json
+      `;
+    }
+  }
+}
+
+// Expose modal handlers to window for inline onclick attributes
+window.openDataPrepModal = openDataPrepModal;
+window.closeDataPrepModal = closeDataPrepModal;
+window.rebuildDoBIHData = rebuildDoBIHData;

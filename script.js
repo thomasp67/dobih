@@ -2026,6 +2026,18 @@ window.addEventListener('keydown', e => {
 
 // Application entry point on DOMContentLoaded
 window.addEventListener('DOMContentLoaded', async () => {
+  // Auto-detect whether admin panel is available (localhost or accessible)
+  const adminBtn = document.getElementById('admin-link-btn');
+  if (adminBtn) {
+    const isLocal = ['localhost', '127.0.0.1', '::1'].includes(location.hostname) || location.protocol === 'file:';
+    if (!isLocal) {
+      // On remote static hosting where admin is excluded, probe if admin exists, otherwise hide
+      fetch('admin/', { method: 'HEAD' })
+        .then(res => { if (!res.ok) adminBtn.style.display = 'none'; })
+        .catch(() => { adminBtn.style.display = 'none'; });
+    }
+  }
+
   await ensurePhotosLoaded();
   try {
     const res = await fetch('./dobih.json', { cache: 'no-store' });

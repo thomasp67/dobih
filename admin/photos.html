@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DoBIH Photos</title>
+
+  <!-- Cropper.js CSS (Local Vendor) -->
+  <link rel="stylesheet" href="vendor/cropper.min.css">
+  
+  <!-- Photos Theme Stylesheet -->
+  <link rel="stylesheet" href="photos.css">
+</head>
+<body>
+
+  <!-- Top Header Bar -->
+  <header class="photos-header">
+    <div class="photos-title-group">
+      <h1 class="photos-title">
+        <span class="logo-badge">DoBIH</span>
+        Photos
+      </h1>
+      <span class="queue-badge" id="queue-count">Scanning...</span>
+    </div>
+
+    <div class="photos-actions">
+      <button class="btn" id="btn-refresh" title="Reload current view">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="23 4 23 10 17 10"></polyline>
+          <polyline points="1 20 1 14 7 14"></polyline>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        </svg>
+        Refresh
+      </button>
+
+      <button class="btn" id="btn-data-prep" onclick="openDataPrepModal()" title="View and compile DoBIH dataset (CSV to JSON)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
+          <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path>
+          <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
+        </svg>
+        Data Prep
+      </button>
+
+      <a href="../index.html" class="btn" title="Return to main DoBIH hill database">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M19 12H5M12 19l-7-7 7-7"/>
+        </svg>
+        Back to Main App
+      </a>
+    </div>
+  </header>
+
+  <!-- 3 Main Area Navigation Tabs -->
+  <nav class="area-nav-tabs" id="area-nav-tabs">
+    <button type="button" class="area-tab-btn active" id="tab-area-staging" onclick="switchArea('staging')">
+      <span class="tab-icon">📥</span>
+      <span class="tab-title">Staging</span>
+      <span class="tab-counter-badge" id="badge-count-staging">0</span>
+    </button>
+    <button type="button" class="area-tab-btn" id="tab-area-live" onclick="switchArea('live')">
+      <span class="tab-icon">🌐</span>
+      <span class="tab-title">Live</span>
+      <span class="tab-counter-badge" id="badge-count-live">0</span>
+    </button>
+    <button type="button" class="area-tab-btn" id="tab-area-archive" onclick="switchArea('archive')">
+      <span class="tab-icon">🗄️</span>
+      <span class="tab-title">Archived</span>
+      <span class="tab-counter-badge" id="badge-count-archive">0</span>
+    </button>
+  </nav>
+
+  <!-- =========================================================================
+       AREA 1: STAGING (Queue & Processing Workbench)
+       ========================================================================= -->
+  <div class="area-container active" id="area-staging">
+    <!-- Empty Queue State -->
+    <div class="empty-state" id="empty-state" style="display: none;">
+      <div class="empty-state-icon">📷</div>
+      <h2 class="empty-state-title">No Photos in Staging Queue</h2>
+      <p class="empty-state-desc">
+        Drop your uncurated photos into the staging folder on your drive:
+      </p>
+      <div class="empty-code-box">H:\htdocs\hills\image\staging\</div>
+      <p class="empty-state-desc" style="font-size: 0.85rem; color: var(--text-muted);">
+        Expected naming format:<br>
+        <code>datetaken_timetaken_crc32 area where the photo was taken.jpg</code><br>
+        <em>Example: <code>20240512_143022_a1b2c3d4 Glen Coe.jpg</code></em>
+      </p>
+      <div style="display: flex; gap: 8px; justify-content: center; margin-top: 12px;">
+        <button class="btn btn-primary" onclick="loadStagingQueue()">
+          Scan Staging Folder Again
+        </button>
+        <button class="btn" onclick="switchArea('archive')">
+          Browse Archived Photos
+        </button>
+      </div>
+    </div>
+
+    <!-- Main Split Workspace -->
+    <main class="workspace" id="staging-workspace">
+
+      <!-- Left Column: Cropper Viewport & Filmstrip -->
+      <section class="viewport-card" id="viewport-card">
+        <div class="viewport-header">
+          <div class="viewport-nav-group">
+            <button class="btn btn-sm" id="btn-prev-photo" title="Previous photo (Left Arrow key)">◀ Prev</button>
+            <span id="queue-position-indicator" class="queue-pos-badge">1 / 1</span>
+            <button class="btn btn-sm" id="btn-next-photo" title="Next photo (Right Arrow key)">Next ▶</button>
+          </div>
+          <span class="current-filename" id="current-filename">Loading photo...</span>
+          <span class="file-meta-pill" id="file-meta-pill">—</span>
+        </div>
+
+        <div class="cropper-container-wrapper">
+          <button class="viewport-chevron chevron-left" id="btn-chevron-prev" title="Previous photo (Left Arrow key)">‹</button>
+          <img id="cropper-image" src="" alt="Active Staging Photo">
+          <button class="viewport-chevron chevron-right" id="btn-chevron-next" title="Next photo (Right Arrow key)">›</button>
+          <!-- Fine Horizon Guide Lines Overlay -->
+          <div class="horizon-grid-overlay" id="horizon-grid-overlay" style="display: none;"></div>
+        </div>
+
+        <!-- Viewport Crop Controls -->
+        <div class="viewport-toolbar">
+          <div class="toolbar-group">
+            <button class="btn btn-sm" id="btn-zoom-in" title="Zoom in (mouse wheel also zooms)">Zoom +</button>
+            <button class="btn btn-sm" id="btn-zoom-out" title="Zoom out">Zoom −</button>
+            <button class="btn btn-sm" id="btn-rotate-ccw" title="Rotate 90 degrees CCW">↺ 90°</button>
+            <button class="btn btn-sm" id="btn-rotate" title="Rotate 90 degrees CW">↻ 90°</button>
+            <button class="btn btn-sm" id="btn-fit-full" title="Fit full 16:9 frame">Fit 16:9</button>
+            <button class="btn btn-sm" id="btn-reset-crop" title="Reset crop box">Reset Box</button>
+            <button class="btn btn-sm" id="btn-toggle-tweak" title="Show straighten / horizon and color adjustments">🛠️ Tweak</button>
+          </div>
+
+          <div class="toolbar-group">
+            <span class="crop-resolution-badge" id="crop-resolution-badge">Crop: 1600 × 900</span>
+          </div>
+        </div>
+
+        <!-- Adjustments & Straighten Tool Panel (hidden by default) -->
+        <div class="adjustments-panel" id="adjustments-panel" style="display: none;">
+          <div class="adjustments-header">
+            <div class="adjustments-tabs">
+              <button type="button" class="adj-tab-btn active" id="tab-color">🎨 Color & Contrast</button>
+              <button type="button" class="adj-tab-btn" id="tab-straighten">📐 Straighten / Horizon</button>
+            </div>
+            <div style="display: flex; gap: 6px; align-items: center;">
+              <button type="button" class="btn btn-sm" id="btn-compare" title="Press and hold to view unedited original">Hold to Compare</button>
+              <button type="button" class="btn btn-sm" id="btn-reset-adjustments" title="Reset rotation and color adjustments">Reset</button>
+            </div>
+          </div>
+
+          <!-- Tab 1: Color, Contrast, Saturation & Hue (Default) -->
+          <div class="adj-tab-content active" id="content-color">
+            <div class="color-grid">
+              <div class="adj-col">
+                <div class="adj-label-row">
+                  <div style="display: inline-flex; align-items: center; gap: 4px;">
+                    <span class="adj-label">Contrast</span>
+                    <button type="button" class="btn-adj-reset" id="btn-reset-contrast" title="Reset Contrast to default (100%)">↺</button>
+                  </div>
+                  <span class="adj-val" id="val-contrast">100%</span>
+                </div>
+                <div class="adj-slider-row">
+                  <button type="button" class="btn btn-sm btn-adj-nudge" id="btn-contrast-minus" title="Decrease Contrast (-1%)">−</button>
+                  <input type="range" id="slider-contrast" class="adj-slider" min="50" max="160" step="1" value="100">
+                  <button type="button" class="btn btn-sm btn-adj-nudge" id="btn-contrast-plus" title="Increase Contrast (+1%)">+</button>
+                </div>
+              </div>
+
+              <div class="adj-col">
+                <div class="adj-label-row">
+                  <div style="display: inline-flex; align-items: center; gap: 4px;">
+                    <span class="adj-label">Saturation</span>
+                    <button type="button" class="btn-adj-reset" id="btn-reset-sat" title="Reset Saturation to default (100%)">↺</button>
+                  </div>
+                  <span class="adj-val" id="val-saturation">100%</span>
+                </div>
+                <div class="adj-slider-row">
+                  <button type="button" class="btn btn-sm btn-adj-nudge" id="btn-sat-minus" title="Decrease Saturation (-1%)">−</button>
+                  <input type="range" id="slider-saturation" class="adj-slider" min="0" max="200" step="1" value="100">
+                  <button type="button" class="btn btn-sm btn-adj-nudge" id="btn-sat-plus" title="Increase Saturation (+1%)">+</button>
+                </div>
+              </div>
+
+              <div class="adj-col">
+                <div class="adj-label-row">
+                  <div style="display: inline-flex; align-items: center; gap: 4px;">
+                    <span class="adj-label">Brightness</span>
+                    <button type="button" class="btn-adj-reset" id="btn-reset-bright" title="Reset Brightness to default (100%)">↺</button>
+                  </div>
+                  <span class="adj-val" id="val-brightness">100%</span>
+                </div>
+                <div class="adj-slider-row">
+                  <button type="button" class="btn btn-sm btn-adj-nudge" id="btn-bright-minus" title="Decrease Brightness (-1%)">−</button>
+                  <input type="range" id="slider-brightness" class="adj-slider" min="60" max="140" step="1" value="100">
+                  <button type="button" class="btn btn-sm btn-adj-nudge" id="btn-bright-plus" title="Increase Brightness (+1%)">+</button>
+                </div>
+              </div>
+
+              <div class="adj-col">
+                <div class="adj-label-row">
+                  <div style="display: inline-flex; align-items: center; gap: 4px;">
+                    <span class="adj-label">Hue</span>
+                    <button type="button" class="btn-adj-reset" id="btn-reset-hue" title="Reset Hue to default (0°)">↺</button>
+                  </div>
+                  <span class="adj-val" id="val-hue">0°</span>
+                </div>
+                <div class="adj-slider-row">
+                  <button type="button" class="btn btn-sm btn-adj-nudge" id="btn-hue-minus" title="Rotate Hue -1°">−</button>
+                  <input type="range" id="slider-hue" class="adj-slider" min="-180" max="180" step="1" value="0">
+                  <button type="button" class="btn btn-sm btn-adj-nudge" id="btn-hue-plus" title="Rotate Hue +1°">+</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab 2: Free Rotate & Horizon Straighten -->
+          <div class="adj-tab-content" id="content-straighten" style="display: none;">
+            <div class="adj-row">
+              <div style="display: inline-flex; align-items: center; gap: 4px;">
+                <span class="adj-label">Straighten:</span>
+                <button type="button" class="btn-adj-reset" id="btn-reset-rotate" title="Reset Straighten to 0°">↺</button>
+              </div>
+              <input type="range" id="slider-rotate" class="adj-slider" min="-45" max="45" step="0.1" value="0">
+              <span class="adj-val" id="val-rotate">0.0°</span>
+              <div class="adj-btn-group">
+                <button type="button" class="btn btn-sm" id="btn-rot-minus-1" title="-1°">-1°</button>
+                <button type="button" class="btn btn-sm" id="btn-rot-minus-01" title="-0.1°">-0.1°</button>
+                <button type="button" class="btn btn-sm" id="btn-rot-zero" title="Level Horizon (0°)">0°</button>
+                <button type="button" class="btn btn-sm" id="btn-rot-plus-01" title="+0.1°">+0.1°</button>
+                <button type="button" class="btn btn-sm" id="btn-rot-plus-1" title="+1°">+1°</button>
+              </div>
+              <button type="button" class="btn btn-sm" id="btn-toggle-grid" title="Toggle horizontal guide lines">Grid Lines</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filmstrip / Queue Carousel -->
+        <div class="filmstrip-container">
+          <div class="filmstrip-header">
+            <span>Staging Queue</span>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <button class="btn btn-sm" id="btn-strip-prev" style="padding: 2px 8px; font-size: 0.75rem;" title="Previous photo (Left Arrow)">◀</button>
+              <span style="font-size: 0.75rem; color: var(--text-muted);">Use ← / → keys</span>
+              <button class="btn btn-sm" id="btn-strip-next" style="padding: 2px 8px; font-size: 0.75rem;" title="Next photo (Right Arrow)">▶</button>
+            </div>
+          </div>
+          <div class="filmstrip-strip" id="filmstrip-strip">
+            <!-- Populated dynamically via photos.js -->
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Column: Metadata & Tagging Panel -->
+      <aside class="editor-panel" id="editor-panel">
+
+        <!-- Top Action Row: Primary Save & Go Live on left; Archive and Delete on right -->
+        <div class="action-row">
+          <button class="btn btn-primary btn-process" id="btn-process" disabled>
+            Select Primary Hill to Process
+          </button>
+          <div class="action-btn-group">
+            <button type="button" class="btn btn-archive-single" id="btn-archive-single" title="Move original to archive without publishing to website">
+              🗄️ Archive
+            </button>
+            <button type="button" class="btn btn-danger" id="btn-delete" title="Permanently delete from staging folder">
+              🗑️ Delete
+            </button>
+          </div>
+        </div>
+
+        <!-- Status Banner (shown if photo was already added or archived) -->
+        <div class="status-alert-banner" id="status-alert-banner" style="display: none;">
+          <span class="banner-icon" id="status-banner-icon">✓</span>
+          <div class="banner-text">
+            <div style="font-weight: 700; color: #fff;" id="status-banner-title">Already Processed on Site</div>
+            <div id="status-banner-detail" style="font-size: 0.78rem; color: #a7f3d0;">Matching CRC32 already exists</div>
+          </div>
+        </div>
+
+        <!-- Section: Parsed Filename Metadata -->
+        <div class="section-group">
+          <div class="section-title">
+            <span>Parsed Photo Info</span>
+          </div>
+          <div class="info-grid">
+            <div class="info-item">
+              <span class="info-label">Date Taken</span>
+              <span class="info-val" id="info-date">—</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Time Taken</span>
+              <span class="info-val" id="info-time">—</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">CRC32</span>
+              <span class="info-val" id="info-crc">—</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Detected Area</span>
+              <span class="info-val" id="info-area">—</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Site Status</span>
+              <span class="info-val" id="info-site-status">—</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Archive Status</span>
+              <span class="info-val" id="info-archive-status">—</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Target Filename Banner -->
+        <div class="target-file-banner" id="target-file-banner">
+          <div>
+            <span>Target File: <span class="target-file-name" id="target-file-name">photo.jpg</span></span>
+            <div id="target-file-meta" style="font-size: 0.76rem; opacity: 0.85; margin-top: 2px;">
+              At least 1 hill required in Primary or Taken From
+            </div>
+          </div>
+        </div>
+
+        <!-- Section: Primary Hill(s) -->
+        <div class="section-group">
+          <div class="section-title">
+            <span>Primary Hill(s)</span>
+            <span style="font-size: 0.72rem; color: var(--accent);" id="primary-count-badge">0 selected</span>
+          </div>
+
+          <div class="search-wrapper">
+            <input type="text" id="primary-search" class="form-control" placeholder="Search primary summits in photo..." autocomplete="off">
+            <div class="suggestions-dropdown" id="primary-suggestions"></div>
+          </div>
+
+          <div class="tags-container" id="primary-chips-container">
+            <span class="chips-empty-hint">No primary hills added</span>
+          </div>
+        </div>
+
+        <!-- Section: Secondary Hill(s) -->
+        <div class="section-group">
+          <div class="section-title">
+            <span>Secondary Hill(s)</span>
+            <span style="font-size: 0.72rem; color: var(--text-muted);" id="secondary-count-badge">0 selected</span>
+          </div>
+
+          <div class="search-wrapper">
+            <input type="text" id="secondary-search" class="form-control" placeholder="Search background / visible summits..." autocomplete="off">
+            <div class="suggestions-dropdown" id="secondary-suggestions"></div>
+          </div>
+
+          <div class="tags-container" id="secondary-chips-container">
+            <span class="chips-empty-hint">No secondary hills added</span>
+          </div>
+        </div>
+
+        <!-- Section: Taken From -->
+        <div class="section-group">
+          <div class="section-title">
+            <span>Taken From</span>
+            <span style="font-size: 0.72rem; color: var(--text-muted);" id="from-count-badge">0 selected</span>
+          </div>
+
+          <div class="search-wrapper">
+            <input type="text" id="from-search" class="form-control" placeholder="Search viewpoint summit where camera was..." autocomplete="off">
+            <div class="suggestions-dropdown" id="from-suggestions"></div>
+          </div>
+
+          <div class="tags-container" id="from-chips-container">
+            <span class="chips-empty-hint">No 'Taken From' hill specified</span>
+          </div>
+        </div>
+
+        <!-- Section: Photo Caption / Comment (XPComment) -->
+        <div class="section-group">
+          <div class="section-title">
+            <span>Caption / Comment (XPComment)</span>
+            <span style="font-size: 0.72rem; color: var(--text-muted);">Shown centered beneath photo</span>
+          </div>
+
+          <textarea id="photo-comment" class="form-control form-textarea" placeholder="e.g. Summit cairn looking South toward Ben Starav..."></textarea>
+          
+          <div class="quick-fill-row">
+            <span style="font-size: 0.72rem; color: var(--text-muted); align-self: center;">Quick insert:</span>
+            <button type="button" class="quick-fill-btn" id="btn-quick-primary" style="display: none;">Primary Summit(s)</button>
+            <button type="button" class="quick-fill-btn" id="btn-quick-from" style="display: none;">View from...</button>
+            <button type="button" class="quick-fill-btn" id="btn-quick-area">Area Hint</button>
+            <button type="button" class="quick-fill-btn" id="btn-clear-comment">Clear</button>
+          </div>
+        </div>
+
+      </aside>
+    </main>
+  </div>
+
+
+  <!-- =========================================================================
+       AREA 2: LIVE (Photos published to image/hills and website)
+       ========================================================================= -->
+  <div class="area-container" id="area-live" style="display: none;">
+    <!-- Toolbar: Search, Stats & Refresh -->
+    <div class="area-toolbar">
+      <div class="toolbar-search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="live-search" class="form-control" placeholder="Search live photos by hill name, #, caption, or CRC32...">
+      </div>
+      <div class="toolbar-stats" id="live-stats-bar">
+        <span class="stat-pill" id="live-stat-total">0 Live Photos</span>
+        <span class="stat-pill" id="live-stat-hills">0 Summits</span>
+        <span class="stat-pill" id="live-stat-archived">0 Linked Originals</span>
+      </div>
+      <button class="btn btn-sm" id="btn-refresh-live" onclick="loadLivePhotos()">
+        ↻ Refresh Live
+      </button>
+    </div>
+
+    <!-- Live Empty State -->
+    <div class="empty-state" id="live-empty-state" style="display: none;">
+      <div class="empty-state-icon">🌐</div>
+      <h2 class="empty-state-title">No Live Photos on Website Yet</h2>
+      <p class="empty-state-desc">
+        Crop and publish photos from the Staging area to display them on the website.
+      </p>
+      <button class="btn btn-primary" onclick="switchArea('staging')">
+        Go to Staging Queue
+      </button>
+    </div>
+
+    <!-- Live Photos Grid -->
+    <div class="photo-gallery-grid" id="live-photo-grid"></div>
+  </div>
+
+
+  <!-- =========================================================================
+       AREA 3: ARCHIVED (Originals processed or deemed not needed)
+       ========================================================================= -->
+  <div class="area-container" id="area-archive" style="display: none;">
+    <!-- Toolbar: Search, Filters & Refresh -->
+    <div class="area-toolbar">
+      <div class="toolbar-search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="archive-search" class="form-control" placeholder="Search archive by filename, area hint, date, or CRC32...">
+      </div>
+      <div class="toolbar-filter-tabs">
+        <button type="button" class="subtab-btn active" data-filter="all" onclick="setArchiveFilter('all')">
+          All <span class="subtab-count" id="subtab-count-all">0</span>
+        </button>
+        <button type="button" class="subtab-btn" data-filter="live" onclick="setArchiveFilter('live')">
+          Live <span class="subtab-count" id="subtab-count-live">0</span>
+        </button>
+        <button type="button" class="subtab-btn" data-filter="unprocessed" onclick="setArchiveFilter('unprocessed')">
+          Archived Only <span class="subtab-count" id="subtab-count-unprocessed">0</span>
+        </button>
+      </div>
+      <button class="btn btn-sm" id="btn-refresh-archive" onclick="loadArchiveList()">
+        ↻ Refresh Archive
+      </button>
+    </div>
+
+    <!-- Archive Empty State -->
+    <div class="empty-state" id="archive-empty-state" style="display: none;">
+      <div class="empty-state-icon">🗄️</div>
+      <h2 class="empty-state-title">Archive is Empty</h2>
+      <p class="empty-state-desc">
+        Original high-resolution photos that have been processed or deemed not needed will appear here.
+      </p>
+      <div class="empty-code-box">H:\htdocs\hills\image\staging\archive\</div>
+    </div>
+
+    <!-- Archive Photos Grid -->
+    <div class="photo-gallery-grid" id="archive-photo-grid"></div>
+  </div>
+
+
+  <!-- =========================================================================
+       MODAL: EDIT LIVE PHOTO METADATA (Primary/Secondary/From & Caption)
+       ========================================================================= -->
+  <div class="modal-backdrop" id="modal-edit-live" style="display: none;">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 class="modal-title">Edit Live Photo Details</h3>
+        <button type="button" class="modal-close" onclick="closeEditLiveModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-photo-preview-wrap">
+          <img id="modal-preview-img" src="" alt="Photo Preview">
+          <div class="modal-preview-meta">
+            <div id="modal-file-name" style="font-weight: 700; color: #fff; font-size: 1rem;"></div>
+            <div id="modal-file-crc" style="font-size: 0.82rem; color: var(--accent); margin-top: 2px;"></div>
+            <div id="modal-file-archive" style="font-size: 0.78rem; color: var(--text-muted); margin-top: 4px;"></div>
+          </div>
+        </div>
+
+        <!-- Primary Hills -->
+        <div class="section-group" style="margin-top: 14px;">
+          <div class="section-title">
+            <span>Primary Hill(s)</span>
+            <span style="font-size: 0.72rem; color: var(--accent);" id="modal-primary-count">0 selected</span>
+          </div>
+          <div class="search-wrapper">
+            <input type="text" id="modal-primary-search" class="form-control" placeholder="Search primary summits..." autocomplete="off">
+            <div class="suggestions-dropdown" id="modal-primary-suggestions"></div>
+          </div>
+          <div class="tags-container" id="modal-primary-chips"></div>
+        </div>
+
+        <!-- Secondary Hills -->
+        <div class="section-group">
+          <div class="section-title">
+            <span>Secondary Hill(s)</span>
+            <span style="font-size: 0.72rem; color: var(--text-muted);" id="modal-secondary-count">0 selected</span>
+          </div>
+          <div class="search-wrapper">
+            <input type="text" id="modal-secondary-search" class="form-control" placeholder="Search background summits..." autocomplete="off">
+            <div class="suggestions-dropdown" id="modal-secondary-suggestions"></div>
+          </div>
+          <div class="tags-container" id="modal-secondary-chips"></div>
+        </div>
+
+        <!-- Taken From -->
+        <div class="section-group">
+          <div class="section-title">
+            <span>Taken From</span>
+            <span style="font-size: 0.72rem; color: var(--text-muted);" id="modal-from-count">0 selected</span>
+          </div>
+          <div class="search-wrapper">
+            <input type="text" id="modal-from-search" class="form-control" placeholder="Search viewpoint summit..." autocomplete="off">
+            <div class="suggestions-dropdown" id="modal-from-suggestions"></div>
+          </div>
+          <div class="tags-container" id="modal-from-chips"></div>
+        </div>
+
+        <!-- Caption -->
+        <div class="section-group">
+          <div class="section-title">
+            <span>Caption / Comment (XPComment)</span>
+          </div>
+          <textarea id="modal-comment" class="form-control form-textarea" placeholder="Caption displayed beneath photo..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn" onclick="closeEditLiveModal()">Cancel</button>
+        <button type="button" class="btn btn-primary" id="btn-save-live-meta" onclick="saveLiveMeta()">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================
+       MODAL: DATA PREPARATION (CSV to dobih.json Compiler)
+       =================================================================== -->
+  <div class="modal-backdrop" id="modal-data-prep" style="display: none;">
+    <div class="modal-dialog" style="max-width: 650px;">
+      <div class="modal-header">
+        <h3 class="modal-title">📊 DoBIH Dataset Preparation</h3>
+        <button type="button" class="modal-close" onclick="closeDataPrepModal()">✕</button>
+      </div>
+      <div class="modal-body" style="display: flex; flex-direction: column; gap: 16px;">
+        <p style="margin: 0; font-size: 0.88rem; color: var(--text-secondary); line-height: 1.5;">
+          Compile the source Database of British and Irish Hills CSV release into the streamlined 
+          <code>dobih.json</code> dataset consumed by the static web application.
+        </p>
+
+        <!-- Status Cards -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border); border-radius: 8px; padding: 12px;">
+            <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 600; margin-bottom: 4px;">Source CSV</div>
+            <div id="data-csv-name" style="font-weight: 600; color: #fff; font-size: 0.92rem; word-break: break-all;">DoBIH_v18_5.csv</div>
+            <div id="data-csv-meta" style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 4px;">Checking...</div>
+          </div>
+
+          <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border); border-radius: 8px; padding: 12px;">
+            <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 600; margin-bottom: 4px;">Compiled Live JSON</div>
+            <div id="data-json-name" style="font-weight: 600; color: #fff; font-size: 0.92rem; word-break: break-all;">dobih.json</div>
+            <div id="data-json-meta" style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 4px;">Checking...</div>
+          </div>
+        </div>
+
+        <!-- Output / Terminal Feedback Box -->
+        <div id="data-prep-console" style="display: none; background: #020617; border: 1px solid var(--border); border-radius: 6px; padding: 12px; font-family: monospace; font-size: 0.82rem; color: #38bdf8; max-height: 160px; overflow-y: auto; white-space: pre-wrap;"></div>
+
+        <div style="background: rgba(30, 41, 59, 0.5); border-left: 3px solid var(--accent); padding: 10px 12px; border-radius: 4px; font-size: 0.8rem; color: var(--text-secondary);">
+          <b>CLI Alternative:</b> You can also run the PowerShell script directly from the host terminal:
+          <code style="display: block; margin-top: 6px; color: #a7f3d0; background: #0f172a; padding: 6px 8px; border-radius: 4px;">pwsh ./admin/csv/convert_csv_to_json.ps1</code>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn" onclick="closeDataPrepModal()">Close</button>
+        <button type="button" class="btn btn-primary" id="btn-rebuild-data" onclick="rebuildDoBIHData()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <polyline points="1 20 1 14 7 14"></polyline>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+          </svg>
+          Rebuild dobih.json
+        </button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Toast Notification Pop-up -->
+  <div class="toast" id="toast">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+      <polyline points="22 4 12 14.01 9 11.01"></polyline>
+    </svg>
+    <span id="toast-msg">Notification</span>
+    <button type="button" id="toast-close" style="background: none; border: none; color: inherit; font-size: 1rem; cursor: pointer; padding: 0 4px; margin-left: 8px;">✕</button>
+  </div>
+
+  <!-- Scripts -->
+  <script src="vendor/cropper.min.js"></script>
+  <script src="photos.js"></script>
+</body>
+</html>

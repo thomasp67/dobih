@@ -14,11 +14,15 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'OPTIONS') {
     exit;
 }
 
-$baseDir = dirname(__DIR__);
-$stagingDir = $baseDir . DIRECTORY_SEPARATOR . 'image' . DIRECTORY_SEPARATOR . 'staging';
+$adminDir = dirname(__DIR__);
+$rootDir = dirname($adminDir);
+$stagingDir = $adminDir . DIRECTORY_SEPARATOR . 'staging';
 $archiveDir = $stagingDir . DIRECTORY_SEPARATOR . 'archive';
-$hillsDir = $baseDir . DIRECTORY_SEPARATOR . 'image' . DIRECTORY_SEPARATOR . 'hills';
-$psScript = $hillsDir . DIRECTORY_SEPARATOR . 'process_crop.ps1';
+$hillsDir = $rootDir . DIRECTORY_SEPARATOR . 'image' . DIRECTORY_SEPARATOR . 'hills';
+$psScript = $adminDir . DIRECTORY_SEPARATOR . 'scripts' . DIRECTORY_SEPARATOR . 'process_crop.ps1';
+$csvScript = $adminDir . DIRECTORY_SEPARATOR . 'csv' . DIRECTORY_SEPARATOR . 'convert_csv_to_json.ps1';
+$csvFile = $adminDir . DIRECTORY_SEPARATOR . 'csv' . DIRECTORY_SEPARATOR . 'DoBIH_v18_5.csv';
+$jsonFile = $rootDir . DIRECTORY_SEPARATOR . 'dobih.json';
 
 // Ensure staging and archive directories exist
 if (!is_dir($stagingDir)) {
@@ -78,10 +82,18 @@ switch ($action) {
         handleDeleteArchive($archiveDir);
         break;
 
+    case 'data_status':
+        handleDataStatus($csvFile, $jsonFile);
+        break;
+
+    case 'rebuild_data':
+        handleRebuildData($csvScript, $csvFile, $jsonFile);
+        break;
+
     default:
         echo json_encode([
             'success' => false,
-            'error' => 'Invalid action. Supported: queue, live_list, archive_list, archive_single, send_to_staging, update_live_meta, delete_live, delete_archive, delete_staging, process, next_index.'
+            'error' => 'Invalid action. Supported: queue, live_list, archive_list, archive_single, send_to_staging, update_live_meta, delete_live, delete_archive, delete_staging, process, next_index, data_status, rebuild_data.'
         ]);
         break;
 }
@@ -190,7 +202,7 @@ function handleQueue(string $stagingDir, string $hillsDir, string $archiveDir): 
 
         $queue[] = [
             'filename' => $file,
-            'url' => 'image/staging/' . rawurlencode($file),
+            'url' => 'staging/' . rawurlencode($file),
             'sizeBytes' => $sizeBytes,
             'sizeFormatted' => $sizeFormatted,
             'mtime' => filemtime($fullPath),
@@ -314,7 +326,7 @@ function handleLiveList(string $hillsDir, string $archiveDir, string $stagingDir
 
         $live[] = [
             'file' => $f,
-            'url' => 'image/hills/' . rawurlencode($f),
+            'url' => '../image/hills/' . rawurlencode($f),
             'crc' => $crc,
             'sizeBytes' => $sizeBytes,
             'sizeFormatted' => $sizeFormatted,
@@ -394,7 +406,7 @@ function handleArchiveList(string $archiveDir, string $hillsDir, string $staging
 
         $list[] = [
             'filename' => $f,
-            'url' => 'image/staging/archive/' . rawurlencode($f),
+            'url' => 'staging/archive/' . rawurlencode($f),
             'sizeBytes' => $sizeBytes,
             'sizeFormatted' => $sizeFormatted,
             'mtime' => filemtime($path),
@@ -460,7 +472,7 @@ function handleArchiveSingle(string $stagingDir, string $archiveDir): void {
             'success' => true,
             'message' => 'Photo moved to archive.',
             'filename' => $filename,
-            'archivedTo' => 'image/staging/archive/' . $filename
+            'archivedTo' => 'staging/archive/' . $filename
         ]);
     } else {
         echo json_encode(['success' => false, 'error' => 'Failed to move photo to archive folder.']);
@@ -788,7 +800,7 @@ function getArchivedCrcMap(string $archiveDir): array {
         $parsed = parsePhotoFilename($f, $fullPath);
         $fileInfo = [
             'filename' => $f,
-            'url' => 'image/staging/archive/' . rawurlencode($f),
+            'url' => 'staging/archive/' . rawurlencode($f),
             'size' => $size,
             'sizeFormatted' => $sizeFormatted,
             'mtime' => filemtime($fullPath),
@@ -949,7 +961,8 @@ function handleProcess(string $stagingDir, string $hillsDir, string $archiveDir,
         '-CropHeight', (string)$cropH,
         '-Comment', escapeshellarg($comment),
         '-Keywords', escapeshellarg($keywordsStr),
-        '-ArchiveFolder', escapeshellarg($archiveDir)
+        '-ArchiveFolder', escapeshellarg($archiveDir),
+        '-HillsDir', escapeshellarg($hillsDir)
     ];
 
     if ($croppedFilePath !== '') {
@@ -995,7 +1008,7 @@ function handleProcess(string $stagingDir, string $hillsDir, string $archiveDir,
             'from' => $cleanFrom,
             'comment' => $comment,
             'tags' => $tagParts,
-            'archivedTo' => 'image/staging/archive/' . $filename
+            'archivedTo' => 'staging/archive/' . $filename
         ]);
     } else {
         $errMsg = $jsonResult['error'] ?? ($stderr ?: ($stdout ?: 'Unknown error executing PowerShell script.'));
@@ -1099,4 +1112,99 @@ function parsePhotoFilename(string $filename, ?string $fullPath = null): array {
     }
 
     return $res;
+}
+
+/**
+ * Checks and reports file status for source CSV and generated dobih.json.
+ */
+function handleDataStatus(string $csvFile, string $jsonFile): void {
+    $csvExists = file_exists($csvFile);
+    $jsonExists = file_exists($jsonFile);
+
+    $csvSize = $csvExists ? filesize($csvFile) : 0;
+    $jsonSize = $jsonExists ? filesize($jsonFile) : 0;
+
+    $csvMtime = $csvExists ? filemtime($csvFile) : 0;
+    $jsonMtime = $jsonExists ? filemtime($jsonFile) : 0;
+
+    echo json_encode([
+        'success' => true,
+        'csv' => [
+            'exists' => $csvExists,
+            'file' => basename($csvFile),
+            'sizeBytes' => $csvSize,
+            'sizeFormatted' => $csvSize >= 1048576 ? round($csvSize / 1048576, 2) . ' MB' : round($csvSize / 1024, 1) . ' KB',
+            'mtime' => $csvMtime,
+            'mtimeFormatted' => $csvMtime ? date('Y-m-d H:i:s', $csvMtime) : '-'
+        ],
+        'json' => [
+            'exists' => $jsonExists,
+            'file' => basename($jsonFile),
+            'sizeBytes' => $jsonSize,
+            'sizeFormatted' => $jsonSize >= 1048576 ? round($jsonSize / 1048576, 2) . ' MB' : round($jsonSize / 1024, 1) . ' KB',
+            'mtime' => $jsonMtime,
+            'mtimeFormatted' => $jsonMtime ? date('Y-m-d H:i:s', $jsonMtime) : '-'
+        ]
+    ]);
+}
+
+/**
+ * Rebuilds dobih.json from DoBIH_v18_5.csv via convert_csv_to_json.ps1.
+ */
+function handleRebuildData(string $csvScript, string $csvFile, string $jsonFile): void {
+    if (!file_exists($csvScript) || !file_exists($csvFile)) {
+        echo json_encode(['success' => false, 'error' => 'CSV conversion script or source CSV file not found.']);
+        return;
+    }
+
+    $startTime = microtime(true);
+
+    $cmdParts = [
+        'powershell.exe',
+        '-NoProfile',
+        '-ExecutionPolicy', 'Bypass',
+        '-File', escapeshellarg($csvScript),
+        '-CsvPath', escapeshellarg($csvFile),
+        '-OutputPath', escapeshellarg($jsonFile)
+    ];
+
+    $command = implode(' ', $cmdParts);
+    $descriptor = [
+        0 => ['pipe', 'r'],
+        1 => ['pipe', 'w'],
+        2 => ['pipe', 'w']
+    ];
+
+    $proc = proc_open($command, $descriptor, $pipes);
+    if (!is_resource($proc)) {
+        echo json_encode(['success' => false, 'error' => 'Failed to initialize PowerShell runner.']);
+        return;
+    }
+
+    fclose($pipes[0]);
+    $stdout = stream_get_contents($pipes[1]);
+    fclose($pipes[1]);
+    $stderr = stream_get_contents($pipes[2]);
+    fclose($pipes[2]);
+    $exitCode = proc_close($proc);
+
+    $elapsed = round(microtime(true) - $startTime, 2);
+
+    if ($exitCode === 0 && file_exists($jsonFile)) {
+        $jsonSize = filesize($jsonFile);
+        echo json_encode([
+            'success' => true,
+            'message' => "Successfully rebuilt dobih.json in {$elapsed}s.",
+            'elapsedSeconds' => $elapsed,
+            'outputSizeBytes' => $jsonSize,
+            'outputSizeFormatted' => round($jsonSize / 1048576, 2) . ' MB',
+            'stdout' => trim($stdout)
+        ]);
+    } else {
+        echo json_encode([
+            'success' => false,
+            'error' => $stderr ?: ($stdout ?: 'Unknown error converting CSV to JSON.'),
+            'exitCode' => $exitCode
+        ]);
+    }
 }

@@ -74,9 +74,14 @@ param (
 Set-StrictMode -Off
 $ErrorActionPreference = "Stop"
 
-# If no Folder specified, default to script root or current working directory
+# If no Folder specified, default to image/hills, script root, or current working directory
 if ([string]::IsNullOrWhiteSpace($Folder)) {
-    $Folder = if ($PSScriptRoot) { $PSScriptRoot } else { (Get-Location).Path }
+    $candidate = Join-Path $PSScriptRoot "..\..\image\hills"
+    if (Test-Path $candidate) {
+        $Folder = (Resolve-Path $candidate).Path
+    } else {
+        $Folder = if ($PSScriptRoot) { $PSScriptRoot } else { (Get-Location).Path }
+    }
 }
 
 # -----------------------------------------------------------------------------

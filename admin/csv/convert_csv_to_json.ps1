@@ -31,24 +31,36 @@
     JSON file matching the CSV base name (e.g. DoBIH_v18_5.json) in the same directory.
 #>
 
+param(
+    [string]$CsvPath = "",
+    [string]$OutputPath = ""
+)
+
 # -----------------------------------------------------------------------------
 # 1. Resolve File Paths
 # -----------------------------------------------------------------------------
 # Determine the directory where this script is located
 $scriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { "." }
 
-# Attempt to locate the primary DoBIH CSV release file
-$csvPath = Join-Path $scriptDir "DoBIH_v18_5.csv"
-if (-not (Test-Path $csvPath)) {
-    $csvPath = Join-Path $scriptDir "DoBIH_v18_5_2.csv"
+# Attempt to locate the primary DoBIH CSV release file if not explicitly supplied
+if (-not $CsvPath) {
+    $CsvPath = Join-Path $scriptDir "DoBIH_v18_5.csv"
+    if (-not (Test-Path $CsvPath)) {
+        $CsvPath = Join-Path $scriptDir "DoBIH_v18_5_2.csv"
+    }
+    if (-not (Test-Path $CsvPath)) {
+        $CsvPath = "DoBIH_v18_5.csv"
+    }
 }
-if (-not (Test-Path $csvPath)) {
-    $csvPath = "DoBIH_v18_5.csv"
-}
+$csvPath = (Resolve-Path $CsvPath).Path
 
-# The generated JSON file will match the base name of the CSV (e.g. DoBIH_v18_5.json)
-$baseName = [System.IO.Path]::GetFileNameWithoutExtension($csvPath)
-$jsonPath = Join-Path $scriptDir "$baseName.json"
+# The generated JSON file
+if ($OutputPath) {
+    $jsonPath = $OutputPath
+} else {
+    $baseName = [System.IO.Path]::GetFileNameWithoutExtension($csvPath)
+    $jsonPath = Join-Path $scriptDir "$baseName.json"
+}
 
 Write-Host "Reading CSV: $csvPath ..." -ForegroundColor Cyan
 $rows = Import-Csv -Path $csvPath
@@ -210,3 +222,10 @@ for ($i = 0; $i -lt $total; $i++) {
 $writer.WriteLine("]")
 $writer.Dispose()
 Write-Host "Done! Successfully converted $total hills to $jsonPath" -ForegroundColor Green
+
+# Automatically update root dobih.json if outputting to local directory
+$rootDobih = Join-Path $scriptDir "..\..\dobih.json"
+if (-not $OutputPath -and (Test-Path (Split-Path -Parent $rootDobih))) {
+    Copy-Item -Path $jsonPath -Destination $rootDobih -Force
+    Write-Host "Synchronized live database: $rootDobih" -ForegroundColor Cyan
+}
